@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>琴弦解碼器 - 鋼琴新手互動和弦學習</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkBg: '#0f172a',
+                        cardBg: '#1e293b',
+                        accentBlue: '#38bdf8',
+                        accentPurple: '#a855f7',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans TC', sans-serif;
+            user-select: none;
+        }
+        /* Custom scrollbar for clean UI */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(30, 41, 59, 0.5);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(100, 116, 139, 0.5);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(148, 163, 184, 0.8);
+        }
+        
+        /* Piano key styles & authentic tactile look */
+        .white-key {
+            background: linear-gradient(to bottom, #ffffff 0%, #f1f5f9 100%);
+            box-shadow: inset 0 0 3px rgba(0,0,0,0.15), 0 2px 3px rgba(0,0,0,0.2);
+            transition: background 0.1s ease, box-shadow 0.1s ease;
+            border-bottom-left-radius: 6px;
+            border-bottom-right-radius: 6px;
+        }
+        .white-key:hover {
+            background: linear-gradient(to bottom, #f8fafc 0%, #e2e8f0 100%);
+        }
+        .white-key.active {
+            background: linear-gradient(to bottom, #38bdf8 0%, #0284c7 100%) !important;
+            color: white !important;
+            box-shadow: inset 0 3px 6px rgba(0,0,0,0.3) !important;
+        }
+        
+        .black-key {
+            background: linear-gradient(to bottom, #1e293b 0%, #0f172a 100%);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.2);
+            transition: background 0.1s ease, box-shadow 0.1s ease;
+            border-bottom-left-radius: 4px;
+            border-bottom-right-radius: 4px;
+            z-index: 20;
+        }
+        .black-key:hover {
+            background: linear-gradient(to bottom, #334155 0%, #1e293b 100%);
+        }
+        .black-key.active {
+            background: linear-gradient(to bottom, #0284c7 0%, #0369a1 100%) !important;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.5) !important;
+        }
+    </style>
+</head>
+<body class="bg-darkBg text-slate-100 min-h-screen flex flex-col justify-between selection:bg-sky-500 selection:text-white">
+
+    <!-- Header Navbar -->
+    <header class="border-b border-slate-800 bg-slate-900/60 backdrop-blur-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-500 to-purple-600 flex items-center justify-center shadow-lg shadow-sky-500/20">
+                    <i class="fa-solid fa-music text-white text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg tracking-tight bg-gradient-to-r from-white via-slate-200 to-sky-400 bg-clip-text text-transparent">琴弦解碼器 <span class="text-xs font-normal px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20">新手和弦學習</span></h1>
+                </div>
+            </div>
+            
+            <!-- Quick Search Bar -->
+            <div class="relative hidden md:block w-72">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+                    <i class="fa-solid fa-search text-sm"></i>
+                </span>
+                <input type="text" id="searchInput" placeholder="搜尋和弦 (例如: C, Am7, F#dim)..." 
+                    class="w-full pl-9 pr-4 py-2 bg-slate-800/80 border border-slate-700/80 rounded-xl text-sm focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 placeholder-slate-500 transition">
+            </div>
+
+            <div class="flex items-center space-x-3">
+                <button id="soundToggleBtn" class="flex items-center space-x-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sm font-medium transition shadow-sm">
+                    <i id="soundIcon" class="fa-solid fa-volume-high text-sky-400"></i>
+                    <span id="soundText" class="hidden sm:inline">聲音已開啟</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-6">
+
+        <!-- Mobile Search Bar -->
+        <div class="relative block md:hidden w-full">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+                <i class="fa-solid fa-search text-sm"></i>
+            </span>
+            <input type="text" id="mobileSearchInput" placeholder="搜尋和弦 (例如: C, Am7, F#dim)..." 
+                class="w-full pl-9 pr-4 py-2.5 bg-slate-800/80 border border-slate-700/80 rounded-xl text-sm focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 placeholder-slate-500 transition">
+        </div>
+
+        <!-- Top Dashboard: Active Chord Display & Details -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- Active Chord Card -->
+            <div class="lg:col-span-1 bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col justify-between relative overflow-hidden">
+                <div class="absolute -right-10 -bottom-10 w-40 h-40 bg-sky-500/5 rounded-full blur-3xl pointer-events-none"></div>
+                <div>
+                    <div class="flex justify-between items-center mb-4">
+                        <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">當前選擇和弦</span>
+                        <span id="chordCategoryBadge" class="px-2.5 py-1 rounded-lg bg-sky-500/10 text-sky-400 text-xs font-medium border border-sky-500/20">大三和弦</span>
+                    </div>
+                    
+                    <div class="flex items-baseline space-x-3 mb-2">
+                        <h2 id="currentChordName" class="text-4xl font-extrabold tracking-tight text-white">C</h2>
+                        <span id="currentChordFullName" class="text-lg text-slate-400 font-medium">C Major</span>
+                    </div>
+
+                    <p id="currentChordDescription" class="text-sm text-slate-400 mt-2 leading-relaxed">明亮、穩定，是西方流行音樂中最基礎且常見的和弦之一。</p>
+                </div>
+
+                <div class="mt-6 pt-6 border-t border-slate-800">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-xs font-medium text-slate-400">組成音 (Notes)</span>
+                        <button id="playChordBtn" class="px-3.5 py-1.5 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold text-xs transition flex items-center space-x-1.5 shadow-lg shadow-sky-500/25">
+                            <i class="fa-solid fa-play"></i>
+                            <span>彈奏和弦</span>
+                        </button>
+                    </div>
+                    <div id="chordNotesDisplay" class="flex flex-wrap gap-2 mt-2">
+                        <!-- Populated via JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Piano Keyboard Visualization Box -->
+            <div class="lg:col-span-2 bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col justify-between">
+                <div class="flex justify-between items-center mb-4">
+                    <div class="flex items-center space-x-2">
+                        <i class="fa-solid fa-keyboard text-sky-400"></i>
+                        <span class="font-semibold text-sm text-slate-200">專業模擬鋼琴鍵盤 (C3 - E5)</span>
+                    </div>
+                    <div class="text-xs text-slate-400 flex items-center space-x-3">
+                        <span class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-full bg-sky-400 inline-block"></span><span>和弦音 (Root/Note)</span></span>
+                    </div>
+                </div>
+
+                <!-- Virtual Piano Keyboard Container with Authentic Black/White Key Spacing -->
+                <div class="relative w-full overflow-x-auto pb-2 pt-1 scrollbar-thin">
+                    <div id="pianoKeyboard" class="relative h-44 bg-slate-950 p-3 rounded-xl border border-slate-800 min-w-[750px] select-none flex">
+                        <!-- Keys will be generated dynamically with precise layout -->
+                    </div>
+                </div>
+
+                <div class="mt-4 flex justify-between items-center text-xs text-slate-400">
+                    <span>提示：點擊任意琴鍵可試聽音高，畫面上亮藍色即為目前和弦的組合鍵。</span>
+                    <span id="activeKeyCount">共 3 個按鍵</span>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Control Panel: Root Note & Chord Quality Selection -->
+        <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col gap-6">
+            
+            <!-- Step 1: Select Root Note -->
+            <div>
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-sm font-semibold text-slate-200 flex items-center space-x-2">
+                        <span class="w-6 h-6 rounded-full bg-sky-500/20 text-sky-400 flex items-center justify-center text-xs font-bold border border-sky-500/30">1</span>
+                        <span>選擇根音 (Root Note)</span>
+                    </h3>
+                    <span id="selectedRootLabel" class="text-xs text-sky-400 font-medium">當前根音: C</span>
+                </div>
+                <div id="rootNotesContainer" class="grid grid-cols-6 sm:grid-cols-9 md:grid-cols-12 gap-2">
+                    <!-- Populated via JS -->
+                </div>
+            </div>
+
+            <!-- Step 2: Select Chord Quality -->
+            <div>
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-sm font-semibold text-slate-200 flex items-center space-x-2">
+                        <span class="w-6 h-6 rounded-full bg-sky-500/20 text-sky-400 flex items-center justify-center text-xs font-bold border border-sky-500/30">2</span>
+                        <span>選擇和弦類型 (Chord Quality)</span>
+                    </h3>
+                </div>
+                <div id="chordQualitiesContainer" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-2.5">
+                    <!-- Populated via JS -->
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Common Chord Quick Reference Library -->
+        <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-sm font-semibold text-slate-200 flex items-center space-x-2">
+                    <i class="fa-solid fa-book-open text-sky-400"></i>
+                    <span>新手必學熱門和弦速查</span>
+                </h3>
+                <span class="text-xs text-slate-400">點擊任意卡片快速切換</span>
+            </div>
+            
+            <div id="quickChordsGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 lg:grid-cols-12 gap-2.5">
+                <!-- Populated via JS -->
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-800 bg-slate-900/40 py-6 text-center text-xs text-slate-500">
+        <p>琴弦解碼器 - 專為鋼琴新手打造的互動式和弦學習網頁應用程式 &copy; 2026</p>
+    </footer>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        const ROOT_NOTES = [
+            { name: 'C', alt: ['B#'], semitone: 0 },
+            { name: 'C#', alt: ['Db'], semitone: 1 },
+            { name: 'Db', alt: ['C#'], semitone: 1 },
+            { name: 'D', alt: [], semitone: 2 },
+            { name: 'D#', alt: ['Eb'], semitone: 3 },
+            { name: 'Eb', alt: ['D#'], semitone: 3 },
+            { name: 'E', alt: ['Fb'], semitone: 4 },
+            { name: 'F', alt: ['E#'], semitone: 5 },
+            { name: 'F#', alt: ['Gb'], semitone: 6 },
+            { name: 'Gb', alt: ['F#'], semitone: 6 },
+            { name: 'G', alt: [], semitone: 7 },
+            { name: 'G#', alt: ['Ab'], semitone: 8 },
+            { name: 'Ab', alt: ['G#'], semitone: 8 },
+            { name: 'A', alt: [], semitone: 9 },
+            { name: 'A#', alt: ['Bb'], semitone: 10 },
+            { name: 'Bb', alt: ['A#'], semitone: 10 },
+            { name: 'B', alt: ['Cb'], semitone: 11 }
+        ];
+
+        const UNIQUE_ROOTS = ['C', 'C#', 'Db', 'D', 'D#', 'Eb', 'E', 'F', 'F#', 'Gb', 'G', 'G#', 'Ab', 'A', 'A#', 'Bb', 'B'];
+
+        const CHORD_QUALITIES = {
+            'major': {
+                name: 'Major (大三和弦)',
+                suffix: '',
+                intervals: [0, 4, 7],
+                description: '明亮、穩定，西方流行音樂中最基本和諧的和弦。'
+            },
+            'minor': {
+                name: 'Minor (小三和弦)',
+                suffix: 'm',
+                intervals: [0, 3, 7],
+                description: '帶有憂鬱、柔和或深沉的情感色彩。'
+            },
+            '7': {
+                name: '7 (屬七和弦)',
+                suffix: '7',
+                intervals: [0, 4, 7, 10],
+                description: '帶有強烈解決傾向與藍調色彩，常見於爵士與流行樂。'
+            },
+            'maj7': {
+                name: 'maj7 (大七和弦)',
+                suffix: 'maj7',
+                intervals: [0, 4, 7, 11],
+                description: '夢幻、唯美、浪漫且富有爵士風味的和弦。'
+            },
+            'm7': {
+                name: 'm7 (小七和弦)',
+                suffix: 'm7',
+                intervals: [0, 3, 7, 10],
+                description: '帶有溫柔憂鬱且流暢的高級感和弦。'
+            },
+            'sus2': {
+                name: 'sus2 (掛二和弦)',
+                suffix: 'sus2',
+                intervals: [0, 2, 7],
+                description: '懸疑、開放、空氣感，未定大或小三度的和弦。'
+            },
+            'sus4': {
+                name: 'sus4 (掛四和弦)',
+                suffix: 'sus4',
+                intervals: [0, 5, 7],
+                description: '具有渴望解決到大三和弦的張力感。'
+            },
+            'dim': {
+                name: 'dim (減三和弦)',
+                suffix: 'dim',
+                intervals: [0, 3, 6],
+                description: '緊張、不安、具戲劇性與強烈過渡色彩。'
+            },
+            'aug': {
+                name: 'aug (增三和弦)',
+                suffix: 'aug',
+                intervals: [0, 4, 8],
+                description: '神祕、懸疑且具有向外擴張的特殊聽感。'
+            }
+        };
+
+        const QUICK_CHORDS = [
+            { root: 'C', quality: 'major' },
+            { root: 'Am', quality: 'minor' },
+            { root: 'F', quality: 'major' },
+            { root: 'G', quality: 'major' },
+            { root: 'C', quality: 'maj7' },
+            { root: 'Dm7', quality: 'm7' },
+            { root: 'G7', quality: '7' },
+            { root: 'Em', quality: 'minor' },
+            { root: 'Csus4', quality: 'sus4' },
+            { root: 'Am7', quality: 'm7' },
+            { root: 'F#dim', quality: 'dim' },
+            { root: 'Caug', quality: 'aug' }
+        ];
+
+        const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+        let pianoKeysData = [];
+
+        function generatePianoKeys() {
+            pianoKeysData = [];
+            for (let midi = 48; midi <= 76; midi++) {
+                let noteIndex = midi % 12;
+                let octave = Math.floor(midi / 12) - 1;
+                let name = NOTE_NAMES[noteIndex];
+                let isBlack = name.includes('#');
+                pianoKeysData.push({
+                    midi: midi,
+                    name: name,
+                    octave: octave,
+                    fullName: name + octave,
+                    isBlack: isBlack,
+                    frequency: 440 * Math.pow(2, (midi - 69) / 12)
+                });
+            }
+        }
+
+        let currentState = {
+            root: 'C',
+            quality: 'major',
+            soundEnabled: true
+        };
+
+        let audioCtx = null;
+        function initAudio() {
+            if (!audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContext();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playTone(frequency, duration = 1.2) {
+            if (!currentState.soundEnabled) return;
+            try {
+                initAudio();
+                const osc = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+
+                const now = audioCtx.currentTime;
+                gainNode.gain.setValueAtTime(0, now);
+                gainNode.gain.linearRampToValueAtTime(0.35, now + 0.04);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+                osc.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+
+                osc.start(now);
+                osc.stop(now + duration);
+            } catch (e) {
+                console.log("Audio play error:", e);
+            }
+        }
+
+        function playCurrentChord() {
+            const chordInfo = calculateCurrentChordNotes();
+            if (!chordInfo || chordInfo.midiNotes.length === 0) return;
+
+            chordInfo.midiNotes.forEach((midi, index) => {
+                const keyObj = pianoKeysData.find(k => k.midi === midi);
+                if (keyObj) {
+                    setTimeout(() => {
+                        playTone(keyObj.frequency, 1.8);
+                        highlightKeyElement(midi);
+                    }, index * 60);
+                }
+            });
+        }
+
+        function highlightKeyElement(midi) {
+            const el = document.querySelector(`[data-midi="${midi}"]`);
+            if (el) {
+                el.classList.add('ring-4', 'ring-sky-300');
+                setTimeout(() => {
+                    el.classList.remove('ring-4', 'ring-sky-300');
+                }, 400);
+            }
+        }
+
+        function getRootSemitone(rootName) {
+            const found = ROOT_NOTES.find(r => r.name === rootName || r.alt.includes(rootName));
+            return found ? found.semitone : 0;
+        }
+
+        function calculateCurrentChordNotes() {
+            const qualityObj = CHORD_QUALITIES[currentState.quality];
+            if (!qualityObj) return null;
+
+            const rootSemi = getRootSemitone(currentState.root);
+            const intervals = qualityObj.intervals;
+            const baseMidi = 60 + rootSemi;
+            
+            let midiNotes = [];
+            let noteNames = [];
+
+            intervals.forEach((interval, idx) => {
+                let noteMidi = baseMidi + interval;
+                while (noteMidi < 48) noteMidi += 12;
+                while (noteMidi > 76 && idx > 0) noteMidi -= 12;
+                
+                midiNotes.push(noteMidi);
+                const keyObj = pianoKeysData.find(k => k.midi === noteMidi);
+                if (keyObj) {
+                    noteNames.push(keyObj.name);
+                }
+            });
+
+            const chordDisplayName = currentState.root + qualityObj.suffix;
+
+            return {
+                displayName: chordDisplayName,
+                fullName: `${currentState.root} ${qualityObj.name}`,
+                category: qualityObj.name.split(' ')[1] || qualityObj.name,
+                description: qualityObj.description,
+                midiNotes: midiNotes,
+                noteNames: noteNames
+            };
+        }
+
+        function renderRootNotes() {
+            const container = document.getElementById('rootNotesContainer');
+            container.innerHTML = '';
+
+            const roots = ['C', 'C#', 'Db', 'D', 'D#', 'Eb', 'E', 'F', 'F#', 'Gb', 'G', 'G#', 'Ab', 'A', 'A#', 'Bb', 'B'];
+            
+            roots.forEach(root => {
+                const btn = document.createElement('button');
+                const isSelected = currentState.root === root;
+                btn.className = `py-2 px-1 rounded-xl font-semibold text-sm transition flex flex-col items-center justify-center border ${
+                    isSelected 
+                        ? 'bg-sky-500 text-slate-950 border-sky-400 shadow-lg shadow-sky-500/25 font-bold' 
+                        : 'bg-slate-800/80 hover:bg-slate-700 text-slate-200 border-slate-700/80'
+                }`;
+                btn.innerHTML = `<span>${root}</span>`;
+                btn.onclick = () => {
+                    currentState.root = root;
+                    updateUI();
+                };
+                container.appendChild(btn);
+            });
+
+            document.getElementById('selectedRootLabel').innerText = `當前根音: ${currentState.root}`;
+        }
+
+        function renderChordQualities() {
+            const container = document.getElementById('chordQualitiesContainer');
+            container.innerHTML = '';
+
+            Object.keys(CHORD_QUALITIES).forEach(key => {
+                const q = CHORD_QUALITIES[key];
+                const isSelected = currentState.quality === key;
+                const btn = document.createElement('button');
+                btn.className = `p-3 rounded-xl text-left transition border flex flex-col justify-between ${
+                    isSelected 
+                        ? 'bg-gradient-to-br from-sky-500 to-sky-600 text-slate-950 border-sky-400 shadow-lg shadow-sky-500/25 font-bold' 
+                        : 'bg-slate-800/80 hover:bg-slate-700 text-slate-200 border-slate-700/80'
+                }`;
+                
+                btn.innerHTML = `
+                    <div class="text-base font-bold">${currentState.root}${q.suffix}</div>
+                    <div class="text-xs ${isSelected ? 'text-slate-900 font-medium' : 'text-slate-400'} mt-1 truncate">${q.name.split(' ')[0]}</div>
+                `;
+                
+                btn.onclick = () => {
+                    currentState.quality = key;
+                    updateUI();
+                    playCurrentChord();
+                };
+                container.appendChild(btn);
+            });
+        }
+
+        function renderQuickChords() {
+            const container = document.getElementById('quickChordsGrid');
+            container.innerHTML = '';
+
+            QUICK_CHORDS.forEach(item => {
+                const qualityObj = CHORD_QUALITIES[item.quality];
+                if (!qualityObj) return;
+                const displayName = item.root;
+                const isSelected = currentState.root === item.root && currentState.quality === item.quality;
+
+                const btn = document.createElement('button');
+                btn.className = `p-2.5 rounded-xl border text-center transition flex flex-col items-center justify-center ${
+                    isSelected 
+                        ? 'bg-sky-500 text-slate-950 border-sky-400 font-bold shadow-md shadow-sky-500/20' 
+                        : 'bg-slate-800/60 hover:bg-slate-700/80 text-slate-200 border-slate-700/80'
+                }`;
+                
+                btn.innerHTML = `
+                    <span class="text-sm font-bold">${displayName}</span>
+                    <span class="text-[10px] ${isSelected ? 'text-slate-900 font-medium' : 'text-slate-400'} truncate w-full">${qualityObj.name.split(' ')[0]}</span>
+                `;
+
+                btn.onclick = () => {
+                    if (item.root.endsWith('m7')) { currentState.root = item.root.slice(0, -2); currentState.quality = 'm7'; }
+                    else if (item.root.endsWith('maj7')) { currentState.root = item.root.slice(0, -4); currentState.quality = 'maj7'; }
+                    else if (item.root.endsWith('7')) { currentState.root = item.root.slice(0, -1); currentState.quality = '7'; }
+                    else if (item.root.endsWith('sus4')) { currentState.root = item.root.slice(0, -4); currentState.quality = 'sus4'; }
+                    else if (item.root.endsWith('sus2')) { currentState.root = item.root.slice(0, -4); currentState.quality = 'sus2'; }
+                    else if (item.root.endsWith('dim')) { currentState.root = item.root.slice(0, -3); currentState.quality = 'dim'; }
+                    else if (item.root.endsWith('aug')) { currentState.root = item.root.slice(0, -3); currentState.quality = 'aug'; }
+                    else if (item.root.endsWith('m') && item.root.length > 1) { currentState.root = item.root.slice(0, -1); currentState.quality = 'minor'; }
+                    else { currentState.root = item.root; currentState.quality = item.quality; }
+
+                    updateUI();
+                    playCurrentChord();
+                };
+                container.appendChild(btn);
+            });
+        }
+
+        function renderPianoKeyboard() {
+            const keyboardEl = document.getElementById('pianoKeyboard');
+            keyboardEl.innerHTML = '';
+
+            const chordInfo = calculateCurrentChordNotes();
+            const activeMidiNotes = chordInfo ? chordInfo.midiNotes : [];
+
+            // We want to construct a standard octave-based piano view from C3 (midi 48) to E5 (midi 76)
+            // In a real piano, black keys sit precisely across the borders between certain white keys.
+            // Let's list the exact sequence of white keys and associate black keys relative to them.
+            
+            // Standard piano scale pattern starting from C3 (MIDI 48):
+            // C3 (white), C#3 (black), D3 (white), D#3 (black), E3 (white), F3 (white), F#3 (black), G3 (white), G#3 (black), A3 (white), A#3 (black), B3 (white) ...
+            
+            const keysContainer = document.createElement('div');
+            keysContainer.className = 'relative w-full h-full flex select-none';
+
+            // Filter out white keys and black keys
+            const whiteKeys = pianoKeysData.filter(k => !k.isBlack);
+            const totalWhite = whiteKeys.length;
+            const whiteKeyWidthPercent = 100 / totalWhite;
+
+            // 1. Render all white keys side by side
+            whiteKeys.forEach((key) => {
+                const isActive = activeMidiNotes.includes(key.midi);
+                const whiteEl = document.createElement('div');
+                whiteEl.className = `white-key h-full border border-slate-300/60 flex flex-col justify-end items-center pb-3 cursor-pointer relative ${
+                    isActive ? 'active' : ''
+                }`;
+                whiteEl.style.width = `${whiteKeyWidthPercent}%`;
+                whiteEl.style.flexShrink = '0';
+                whiteEl.setAttribute('data-midi', key.midi);
+
+                if (key.name === 'C' || isActive) {
+                    whiteEl.innerHTML = `<span class="text-[10px] font-bold ${isActive ? 'text-white' : 'text-slate-500'}">${key.fullName}</span>`;
+                }
+
+                whiteEl.onmousedown = () => {
+                    playTone(key.frequency, 1.2);
+                    whiteEl.classList.add('bg-sky-200');
+                    setTimeout(() => whiteEl.classList.remove('bg-sky-200'), 200);
+                };
+
+                keysContainer.appendChild(whiteEl);
+            });
+
+            // 2. Overlay black keys precisely positioned over the gaps between specific white keys
+            // Black keys exist after: C, D, F, G, A (in each octave) -> meaning indices 0, 1, 3, 4, 5 of the 7 white notes per octave.
+            // Let's compute exact pixel or percentage offsets based on white key index.
+            
+            // Map each black key to its preceding white key index
+            // C# sits between white key C and D (i.e. right edge of white key index corresponding to C)
+            whiteKeys.forEach((wKey, wIndex) => {
+                // Check if there is a black key immediately to the right of this white key
+                // Black keys are: C#, D#, F#, G#, A#
+                const nextMidi = wKey.midi + 1;
+                const blackKeyObj = pianoKeysData.find(k => k.midi === nextMidi && k.isBlack);
+                
+                if (blackKeyObj) {
+                    const isActive = activeMidiNotes.includes(blackKeyObj.midi);
+                    const blackEl = document.createElement('div');
+                    
+                    // The black key width is roughly 56% of a white key width
+                    // It should be centered precisely on the border between wIndex and wIndex + 1
+                    const leftPosPercent = (wIndex + 1) * whiteKeyWidthPercent - (whiteKeyWidthPercent * 0.28);
+
+                    blackEl.className = `black-key absolute top-0 h-[62%] rounded-b-md cursor-pointer flex flex-col justify-end items-center pb-2 border border-slate-900 ${
+                        isActive ? 'active' : ''
+                    }`;
+                    blackEl.style.left = `${leftPosPercent}%`;
+                    blackEl.style.width = `${whiteKeyWidthPercent * 0.56}%`;
+                    blackEl.setAttribute('data-midi', blackKeyObj.midi);
+
+                    if (isActive) {
+                        blackEl.innerHTML = `<span class="text-[8px] font-bold text-white">${blackKeyObj.name}</span>`;
+                    }
+
+                    blackEl.onmousedown = (e) => {
+                        e.stopPropagation();
+                        playTone(blackKeyObj.frequency, 1.2);
+                        blackEl.classList.add('bg-sky-700');
+                        setTimeout(() => blackEl.classList.remove('bg-sky-700'), 200);
+                    };
+
+                    keysContainer.appendChild(blackEl);
+                }
+            });
+
+            keyboardEl.appendChild(keysContainer);
+
+            document.getElementById('activeKeyCount').innerText = `共 ${activeMidiNotes.length} 個按鍵`;
+        }
+
+        function updateChordDetailsDisplay() {
+            const chordInfo = calculateCurrentChordNotes();
+            if (!chordInfo) return;
+
+            document.getElementById('currentChordName').innerText = chordInfo.displayName;
+            document.getElementById('currentChordFullName').innerText = chordInfo.fullName;
+            document.getElementById('chordCategoryBadge').innerText = chordInfo.category;
+            document.getElementById('currentChordDescription').innerText = chordInfo.description;
+
+            const notesDisplay = document.getElementById('chordNotesDisplay');
+            notesDisplay.innerHTML = '';
+
+            chordInfo.noteNames.forEach((note, idx) => {
+                const badge = document.createElement('div');
+                badge.className = 'px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-xs font-bold text-sky-400 flex items-center space-x-1.5 shadow-sm';
+                badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span><span>${note}</span> <span class="text-[10px] text-slate-400 font-normal">(音符 ${idx + 1})</span>`;
+                notesDisplay.appendChild(badge);
+            });
+        }
+
+        function updateUI() {
+            renderRootNotes();
+            renderChordQualities();
+            renderQuickChords();
+            renderPianoKeyboard();
+            updateChordDetailsDisplay();
+        }
+
+        function handleSearch(query) {
+            query = query.trim();
+            if (!query) return;
+            query = query.charAt(0).toUpperCase() + query.slice(1);
+
+            for (let root of UNIQUE_ROOTS) {
+                if (query.startsWith(root)) {
+                    const remainder = query.slice(root.length).toLowerCase();
+                    if (remainder === '' || remainder === 'major') {
+                        currentState.root = root;
+                        currentState.quality = 'major';
+                    } else if (remainder === 'm' || remainder === 'min') {
+                        currentState.root = root;
+                        currentState.quality = 'minor';
+                    } else if (remainder === '7') {
+                        currentState.root = root;
+                        currentState.quality = '7';
+                    } else if (remainder === 'maj7') {
+                        currentState.root = root;
+                        currentState.quality = 'maj7';
+                    } else if (remainder === 'm7') {
+                        currentState.root = root;
+                        currentState.quality = 'm7';
+                    } else if (remainder === 'sus2') {
+                        currentState.root = root;
+                        currentState.quality = 'sus2';
+                    } else if (remainder === 'sus4') {
+                        currentState.root = root;
+                        currentState.quality = 'sus4';
+                    } else if (remainder === 'dim' || remainder === '°') {
+                        currentState.root = root;
+                        currentState.quality = 'dim';
+                    } else if (remainder === 'aug' || remainder === '+') {
+                        currentState.root = root;
+                        currentState.quality = 'aug';
+                    }
+                    updateUI();
+                    playCurrentChord();
+                    return;
+                }
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            generatePianoKeys();
+            updateUI();
+
+            document.getElementById('playChordBtn').onclick = () => {
+                playCurrentChord();
+            };
+
+            const soundToggleBtn = document.getElementById('soundToggleBtn');
+            const soundIcon = document.getElementById('soundIcon');
+            const soundText = document.getElementById('soundText');
+
+            soundToggleBtn.onclick = () => {
+                currentState.soundEnabled = !currentState.soundEnabled;
+                if (currentState.soundEnabled) {
+                    soundIcon.className = 'fa-solid fa-volume-high text-sky-400';
+                    soundText.innerText = '聲音已開啟';
+                    soundToggleBtn.classList.remove('opacity-60');
+                } else {
+                    soundIcon.className = 'fa-solid fa-volume-xmark text-slate-400';
+                    soundText.innerText = '聲音已關閉';
+                    soundToggleBtn.classList.add('opacity-60');
+                }
+            };
+
+            const searchInput = document.getElementById('searchInput');
+            const mobileSearchInput = document.getElementById('mobileSearchInput');
+
+            searchInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    handleSearch(searchInput.value);
+                    searchInput.value = '';
+                }
+            });
+
+            mobileSearchInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    handleSearch(mobileSearchInput.value);
+                    mobileSearchInput.value = '';
+                }
+            });
+        });
+    </script>
+</body>
+</html>
